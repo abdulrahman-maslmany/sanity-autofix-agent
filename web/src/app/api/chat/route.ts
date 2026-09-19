@@ -3,18 +3,22 @@ import { NextResponse } from 'next/server'
 import { client } from '@/lib/sanity'
 import OpenAI from 'openai'
 
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY || '',
-  baseURL: 'https://api.groq.com/openai/v1',
-})
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   try {
     const { message } = await req.json()
+    const apiKey = process.env.GROQ_API_KEY
 
-    if (!process.env.GROQ_API_KEY) {
-      return NextResponse.json({ reply: '❌ Error: GROQ_API_KEY is not set in .env.local' }, { status: 400 })
+    if (!apiKey) {
+      return NextResponse.json({ reply: '❌ Error: GROQ_API_KEY is not set' }, { status: 400 })
     }
+
+    // تهيئة عميل Groq داخل الدالة لتجنب أخطاء وقت البناء على Vercel
+    const groq = new OpenAI({
+      apiKey: apiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+    })
 
     // 1. استعلام البيانات المهيكلة بالكامل من Sanity عبر GROQ Query
     const sanityData = await client.fetch(`{
@@ -49,7 +53,7 @@ Rules:
 4. Format your answer nicely with clean markdown bullet points.
 `
 
-    // 3. استدعاء النموذج فائق السرعة
+    // 3. استدعاء النموذج
     const completion = await groq.chat.completions.create({
       model: 'openai/gpt-oss-120b',
       messages: [
